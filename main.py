@@ -70,11 +70,14 @@ class Application:
         # connect client to server
         await client.initial_connection(srv_reader, srv_writer)
 
+        # start communication
+        await client.start_communication()
+
 
 def main():
     app = Application(
         listening_address=('0.0.0.0', 25565),
-        overworld_address=('192.168.1.64', 25565))
+        overworld_address=('127.0.0.1', 20000))
     app.run()
 
 
