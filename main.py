@@ -104,9 +104,13 @@ class Application:
             host=self.overworld_address[0],
             port=self.overworld_address[1])
 
-        await asyncio.gather(
-            self.handle_cli2srv(client_host, srv_reader, cli_writer),
-            self.handle_srv2cli(client_host, cli_reader, srv_writer))
+        cli2srv = asyncio.create_task(self.handle_cli2srv(client_host, srv_reader, cli_writer))
+        srv2cli = asyncio.create_task(self.handle_srv2cli(client_host, cli_reader, srv_writer))
+
+        while client_host in self.clients:
+            await asyncio.sleep(0.1)
+
+        srv2cli.cancel()
 
         self.logger.info(f"Client '{client_host}' disconnected")
 
