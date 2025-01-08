@@ -4,6 +4,7 @@ import asyncio
 import logging
 import requests
 import logging.handlers
+from secret import DISCORD_WEBHOOK
 
 
 READ_BUFFER_SIZE: int = 2 ** 12
@@ -96,8 +97,10 @@ class Application:
         Posts a message
         """
 
-        from secret import DISCORD_WEBHOOK
-        requests.post(DISCORD_WEBHOOK, json={"content": message})
+        async def coro():
+            requests.post(DISCORD_WEBHOOK, json={"content": message})
+
+        asyncio.create_task(coro())
 
     async def client_handler(self, cli_reader: asyncio.StreamReader, cli_writer: asyncio.StreamWriter):
         """
