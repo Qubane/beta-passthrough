@@ -104,25 +104,36 @@ class Application:
         Handles the client connection
         """
 
+        # fetch client peername
         client_host = cli_writer.get_extra_info("peername").__str__()
 
+        # write client to client list
+        self.update_client(client_host, connected=True)
+
+        # log
         self.logger.info(f"Client '{client_host}' connected")
 
+        # connect to server
         srv_reader, srv_writer = await asyncio.open_connection(
             host=self.overworld_address[0],
             port=self.overworld_address[1])
 
+        # create transmission tasks
         cli2srv = asyncio.create_task(self.handle_srv2cli(client_host, srv_reader, cli_writer))
         srv2cli = asyncio.create_task(self.handle_cli2srv(client_host, cli_reader, srv_writer))
 
+        # wait while user is connected
         while self.clients[client_host]["connected"]:
             await asyncio.sleep(0.1)
 
+        # when user disconnects, post disconnect message and delete the user
         self.post_message(f"User '{self.clients[client_host]['username']}' disconnected!")
         self.delete_client(client_host)
 
+        # cancel server to client transmission
         srv2cli.cancel()
 
+        # log
         self.logger.info(f"Client '{client_host}' disconnected")
 
     async def handle_cli2srv(self, host: str, cli_reader: asyncio.StreamReader, srv_writer: asyncio.StreamWriter):
@@ -130,14 +141,18 @@ class Application:
         Handles server to client connection
         """
 
+        # fetch username
         username = await cli_reader.read(READ_BUFFER_SIZE)
         self.update_client(host, username=username[3:].decode("ascii"), connected=True)
 
+        # post about user joining
         self.post_message(f"User '{self.clients[host]['username']}' connected!")
 
+        # notify server
         srv_writer.write(username)
         await srv_writer.drain()
 
+        # client to server transmission loop
         while self.clients[host]["connected"]:
             message = await cli_reader.read(READ_BUFFER_SIZE)
             srv_writer.write(message)
@@ -148,6 +163,7 @@ class Application:
         Handles server to client connection
         """
 
+        # server to client transmission loop
         while self.clients[host]["connected"]:
             message = await srv_reader.read(READ_BUFFER_SIZE)
             if message == b'':
