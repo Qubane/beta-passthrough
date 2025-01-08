@@ -32,15 +32,13 @@ def init_logging():
 class Application:
     def __init__(
             self,
-            listening_port: int,
-            server_overworld_port: int,
-            server_hellworld_port: int | None = None,
-            binding_address: str = "0.0.0.0"
+            listening_address: tuple[str, int],
+            overworld_address: tuple[str, int],
+            hellworld_address: tuple[str, int],
     ):
-        self.binding_address: str = binding_address
-        self.listening_port: int = listening_port
-        self.overworld_port: int = server_overworld_port
-        self.hellworld_port: int | None = server_hellworld_port
+        self.listening_address: tuple[str, int] = listening_address
+        self.overworld_address: tuple[str, int] = overworld_address
+        self.hellworld_address: tuple[str, int] = hellworld_address
 
         self.server: asyncio.Server | None = None
 
@@ -56,10 +54,10 @@ class Application:
         async def coro():
             self.server = await asyncio.start_server(
                 client_connected_cb=self.client_handler,
-                host=self.binding_address,
-                port=self.listening_port)
+                host=self.listening_address[0],
+                port=self.listening_address[1])
 
-            self.logger.info(f"Proxy listening on '{self.binding_address}:{self.listening_port}'")
+            self.logger.info(f"Proxy listening on '{self.listening_address[0]}:{self.listening_address[1]}'")
             async with self.server:
                 try:
                     await self.server.serve_forever()
@@ -69,10 +67,12 @@ class Application:
 
         asyncio.run(coro())
 
-    async def client_handler(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    async def client_handler(self, cli_reader: asyncio.StreamReader, cli_writer: asyncio.StreamWriter):
         """
         Handles the client connection
         """
+
+        srv_reader, srv_writer = await asyncio.open_connection("127.0.0.1")
 
     def stop(self, *args):
         """
