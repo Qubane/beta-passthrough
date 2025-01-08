@@ -1,3 +1,4 @@
+import signal
 import asyncio
 import logging
 
@@ -18,6 +19,8 @@ class Application:
         self.server: asyncio.Server | None = None
 
         self.logger: logging.Logger = logging.getLogger(__name__)
+
+        signal.signal(signal.SIGINT, self.stop)
 
     def run(self):
         """
@@ -45,11 +48,19 @@ class Application:
         Handles the client connection
         """
 
+    def stop(self, *args):
+        """
+        Stops the proxy
+        """
+
+        self.server.close()
+
 
 def main():
     app = Application(
         listening_port=25565,
         server_overworld_port=20000)
+    app.run()
 
 
 if __name__ == '__main__':
