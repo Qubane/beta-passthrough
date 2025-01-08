@@ -29,11 +29,15 @@ class Client:
         self.server_writer.write(message)
         await self.server_writer.drain()
 
+        self.username = message[3:].decode("ascii")
+
         # server accept connection response
         # 02 00 01 2D
         message = await self.server_reader.read(READ_BUFFER_SIZE)
         self.writer.write(message)
         await self.writer.drain()
+
+        self.connected = True
 
     async def start_communication(self):
         """
