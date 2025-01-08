@@ -105,6 +105,7 @@ class Client:
 
         match message[:2]:
             case b'\x03\x00':  # chat messages
+                self.logger.info(message)
                 if message[3:4] == b'/':
                     response = message[:2] + self.process_command(message[4:message[2]+3]) + message[message[2]+3:]
                 else:
