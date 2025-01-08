@@ -44,14 +44,20 @@ class Client:
         Starts communication between client and server
         """
 
+        # check for initial connection
         if self.server_reader is None:
             raise Exception("Not connected")
 
+        # start communication
         cli2srv = asyncio.create_task(self.cli2srv())
         srv2cli = asyncio.create_task(self.srv2cli())
 
+        # while connected -> wait
         while self.connected:
             await asyncio.sleep(0.1)
+
+        # close server connection
+        cli2srv.cancel()
 
     async def cli2srv(self):
         """
