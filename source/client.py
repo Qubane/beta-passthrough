@@ -11,6 +11,8 @@ class Client:
         self.server_reader: asyncio.StreamReader | None = None
         self.server_writer: asyncio.StreamWriter | None = None
 
+        self.communication_task: asyncio.Future | None = None
+
         self.logger: logging.Logger | None = None
 
         self.username: str = "undefined"
@@ -49,18 +51,28 @@ class Client:
         if self.server_reader is None:
             raise Exception("Not connected")
 
-        # start communication
-        cli2srv = asyncio.create_task(self.cli2srv())
-        srv2cli = asyncio.create_task(self.srv2cli())
+        async def coro():
+            # start communication
+            await asyncio.gather(
+                self.cli2srv(),
+                self.srv2cli())
 
-        # while connected -> wait
+        self.communication_task = asyncio.create_task(coro())
+
         while self.connected:
             await asyncio.sleep(0.1)
 
-        # close server connection
-        cli2srv.cancel()
-
         self.logger.info("Client disconnected!")
+
+    async def close_communication(self):
+        """
+        Closes communications
+        """
+
+        self.writer.close()
+        self.server_writer.close()
+
+        self.communication_task.cancel()
 
     async def cli2srv(self):
         """

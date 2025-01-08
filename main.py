@@ -60,7 +60,7 @@ class Application:
         """
 
         # make client
-        client = Client(cli_reader, cli_writer)
+        client = Client(cli_reader, cli_writer, clients=self.clients)
 
         # connect to server
         srv_reader, srv_writer = await asyncio.open_connection(
@@ -69,9 +69,14 @@ class Application:
 
         # connect client to server
         await client.initial_connection(srv_reader, srv_writer)
+        self.clients[client.username] = client
 
         # start communication
         await client.start_communication()
+
+        # close communication
+        await client.close_communication()
+        self.clients.pop(client.username)
 
 
 def main():
