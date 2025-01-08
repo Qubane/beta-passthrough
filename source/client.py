@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from source.settings import READ_BUFFER_SIZE
 
 
@@ -9,6 +10,8 @@ class Client:
 
         self.server_reader: asyncio.StreamReader | None = None
         self.server_writer: asyncio.StreamWriter | None = None
+
+        self.logger: logging.Logger | None = None
 
         self.username: str = "undefined"
         self.connected: bool = False
@@ -30,14 +33,10 @@ class Client:
         await self.server_writer.drain()
 
         self.username = message[3:].decode("ascii")
-
-        # server accept connection response
-        # 02 00 01 2D
-        message = await self.server_reader.read(READ_BUFFER_SIZE)
-        self.writer.write(message)
-        await self.writer.drain()
-
         self.connected = True
+
+        self.logger = logging.getLogger(f"{__name__}.{self.username}")
+        self.logger.info("Client connected!")
 
     async def start_communication(self):
         """
@@ -59,6 +58,8 @@ class Client:
         # close server connection
         cli2srv.cancel()
 
+        self.logger.info("Client disconnected!")
+
     async def cli2srv(self):
         """
         Client to server communication
@@ -66,7 +67,7 @@ class Client:
 
         while self.connected:
             message = await self.reader.read(READ_BUFFER_SIZE)
-            self.server_writer.write(message)
+            self.server_writer.write(self.client_message_monitor(message))
             await self.server_writer.drain()
 
     async def srv2cli(self):
@@ -76,10 +77,12 @@ class Client:
 
         while self.connected:
             message = await self.server_reader.read(READ_BUFFER_SIZE)
-            self.writer.write(message)
+            if message == b'':
+                self.connected = False
+            self.writer.write(self.server_message_monitor(message))
             await self.writer.drain()
 
-    async def client_message_monitor(self, message: bytes) -> bytes:
+    def client_message_monitor(self, message: bytes) -> bytes:
         """
         Monitors client sent messages.
         :param message: message from client
@@ -93,7 +96,7 @@ class Client:
                 pass
         return message
 
-    async def server_message_monitor(self, message) -> bytes:
+    def server_message_monitor(self, message) -> bytes:
         """
         Monitors server sent messages.
         :param message: message from server
@@ -101,8 +104,6 @@ class Client:
         """
 
         match message[:2]:
-            case b'\xff\x00':  # disconnect message
-                self.connected = False
             case _:
                 pass
         return message
