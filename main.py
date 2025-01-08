@@ -1,9 +1,7 @@
 import signal
 import asyncio
 import logging
-import requests
 import logging.handlers
-from secret import DISCORD_WEBHOOK
 from source.client import Client
 
 
@@ -82,7 +80,7 @@ class Application:
 def main():
     app = Application(
         listening_address=('0.0.0.0', 25565),
-        overworld_address=('192.168.1.64', 25565))
+        overworld_address=('127.0.0.1', 20000))
     app.run()
 
 
