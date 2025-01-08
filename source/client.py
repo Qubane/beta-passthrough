@@ -85,3 +85,24 @@ class Client:
         :param message: message from client
         :return: possibly modified message
         """
+
+        match message[:2]:
+            case b'\x03\x00':  # chat messages
+                pass
+            case _:
+                pass
+        return message
+
+    async def server_message_monitor(self, message) -> bytes:
+        """
+        Monitors server sent messages.
+        :param message: message from server
+        :return: possible modified message
+        """
+
+        match message[:2]:
+            case b'\xff\x00':  # disconnect message
+                self.connected = False
+            case _:
+                pass
+        return message
