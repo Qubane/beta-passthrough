@@ -7,7 +7,7 @@ import logging.handlers
 from secret import DISCORD_WEBHOOK
 
 
-READ_BUFFER_SIZE: int = 2 ** 12
+READ_BUFFER_SIZE: int = 16
 LOGS_DIRECTORY: str = "logs"
 
 
@@ -160,8 +160,7 @@ class Application:
         # client to server transmission loop
         while self.clients[host]["connected"]:
             message = await cli_reader.read(READ_BUFFER_SIZE)
-            self.check_raw_message(message)
-            srv_writer.write(message)
+            srv_writer.write(self.handle_raw_message(message))
             await srv_writer.drain()
 
     async def handle_srv2cli(self, host: str, srv_reader: asyncio.StreamReader, cli_writer: asyncio.StreamWriter):
@@ -178,24 +177,34 @@ class Application:
             cli_writer.write(message)
             await cli_writer.drain()
 
-    def check_raw_message(self, message: bytes):
+    def handle_raw_message(self, message: bytes) -> bytes:
         """
         Checks raw message
         :param message: raw message
         """
 
         # chat messages
-        # b'\x03\x00' + [msg_length + 1;1byte] + b'\n'
+        # b'\x03\x00' + [msg_length;1byte] + b'\n'
         if (idx := message.find(b'\x03\x00')) > -1:
-            self.handle_chat_messages(message[idx+3:message.find(b'\n', idx)].decode("ascii"))
+            end_idx = message.find(b'\n', idx+4)
+            response = self.handle_chat_messages(message[idx+3:end_idx])
+            if response is not None:
+                # splice message with response
+                return message[:idx+2] + len(response).to_bytes(1) + response + message[end_idx:]
+        return message
 
-    def handle_chat_messages(self, message: str):
+    def handle_chat_messages(self, message: bytes) -> bytes | None:
         """
         Handles chat messages
         :param message: chat message
         """
 
-        self.logger.info(message)
+        # commands
+        if message == b'/list':
+            players = b'Online: ' + b'; '.join(
+                cli["username"].encode("ascii") for cli in self.clients.values() if cli["connected"])
+            return players
+        return None
 
     def stop(self, *args):
         """
