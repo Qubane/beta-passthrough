@@ -97,6 +97,8 @@ class Application:
         Posts a message
         """
 
+        return
+
         async def coro():
             requests.post(DISCORD_WEBHOOK, json={"content": message})
 
@@ -158,6 +160,7 @@ class Application:
         # client to server transmission loop
         while self.clients[host]["connected"]:
             message = await cli_reader.read(READ_BUFFER_SIZE)
+            self.check_raw_message(message)
             srv_writer.write(message)
             await srv_writer.drain()
 
@@ -174,6 +177,25 @@ class Application:
 
             cli_writer.write(message)
             await cli_writer.drain()
+
+    def check_raw_message(self, message: bytes):
+        """
+        Checks raw message
+        :param message: raw message
+        """
+
+        # chat messages
+        # b'\x03\x00' + [msg_length;1byte]
+        if (idx := message.find(b'\x03\x00')) > -1:
+            self.handle_chat_messages(message[idx+3:message.find(b'\n', idx)].decode("ascii"))
+
+    def handle_chat_messages(self, message: str):
+        """
+        Handles chat messages
+        :param message: chat message
+        """
+
+        self.logger.info(message)
 
     def stop(self, *args):
         """
