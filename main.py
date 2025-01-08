@@ -127,7 +127,7 @@ class Application:
             await asyncio.sleep(0.1)
 
         # when user disconnects, post disconnect message and delete the user
-        self.post_message(f"User '{self.clients[client_host]['username']}' disconnected!")
+        self.post_message(f"{self.clients[client_host]['username']} left the server!")
         self.delete_client(client_host)
 
         # cancel server to client transmission
@@ -146,7 +146,7 @@ class Application:
         self.update_client(host, username=username[3:].decode("ascii"), connected=True)
 
         # post about user joining
-        self.post_message(f"User '{self.clients[host]['username']}' connected!")
+        self.post_message(f"{self.clients[host]['username']} joined the server!")
 
         # notify server
         srv_writer.write(username)
