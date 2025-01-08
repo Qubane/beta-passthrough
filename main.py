@@ -91,20 +91,22 @@ class Application:
         if host in self.clients:
             self.clients.pop(host)
 
+    def post_message(self, message: str):
+        """
+        Posts a message
+        """
+
+        from secret import DISCORD_WEBHOOK
+        requests.post(DISCORD_WEBHOOK, json={"content": message})
+
     async def client_handler(self, cli_reader: asyncio.StreamReader, cli_writer: asyncio.StreamWriter):
         """
         Handles the client connection
         """
 
         client_host = cli_writer.get_extra_info("peername").__str__()
-        self.update_client(client_host)
 
         self.logger.info(f"Client '{client_host}' connected")
-        requests.post(
-            "https://discord.com/api/webhooks/1326369797356785766/"
-            "CWyG6Xm1cOwB1Yu_o3v370te-cj4bDBB-yPr_MDQ-NqO_kFteKMYcUTTCBemeqrugGMk",
-            json={"content": "User "}
-        )
 
         srv_reader, srv_writer = await asyncio.open_connection(
             host=self.overworld_address[0],
@@ -113,8 +115,11 @@ class Application:
         cli2srv = asyncio.create_task(self.handle_srv2cli(client_host, srv_reader, cli_writer))
         srv2cli = asyncio.create_task(self.handle_cli2srv(client_host, cli_reader, srv_writer))
 
-        while client_host in self.clients:
+        while self.clients[client_host]["connected"]:
             await asyncio.sleep(0.1)
+
+        self.post_message(f"User '{self.clients[client_host]['username']}' disconnected!")
+        self.delete_client(client_host)
 
         srv2cli.cancel()
 
@@ -126,11 +131,14 @@ class Application:
         """
 
         username = await cli_reader.read(READ_BUFFER_SIZE)
+        self.update_client(host, username=username[3:].decode("ascii"), connected=True)
+
+        self.post_message(f"User '{self.clients[host]['username']}' connected!")
+
         srv_writer.write(username)
-        print(username)
         await srv_writer.drain()
 
-        while host in self.clients:
+        while self.clients[host]["connected"]:
             message = await cli_reader.read(READ_BUFFER_SIZE)
             srv_writer.write(message)
             await srv_writer.drain()
@@ -140,10 +148,10 @@ class Application:
         Handles server to client connection
         """
 
-        while host in self.clients:
+        while self.clients[host]["connected"]:
             message = await srv_reader.read(READ_BUFFER_SIZE)
             if message == b'':
-                self.delete_client(host)
+                self.update_client(host, connected=False)
 
             cli_writer.write(message)
             await cli_writer.drain()
