@@ -43,6 +43,12 @@ class Client:
         if self.server_reader is None:
             raise Exception("Not connected")
 
+        cli2srv = asyncio.create_task(self.cli2srv())
+        srv2cli = asyncio.create_task(self.srv2cli())
+
+        while self.connected:
+            await asyncio.sleep(0.1)
+
     async def cli2srv(self):
         """
         Client to server communication
