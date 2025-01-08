@@ -78,3 +78,10 @@ class Client:
             message = await self.server_reader.read(READ_BUFFER_SIZE)
             self.writer.write(message)
             await self.writer.drain()
+
+    async def client_message_monitor(self, message: bytes) -> bytes:
+        """
+        Monitors client sent messages.
+        :param message: message from client
+        :return: possibly modified message
+        """
