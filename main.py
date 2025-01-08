@@ -2,6 +2,7 @@ import os
 import signal
 import asyncio
 import logging
+import requests
 import logging.handlers
 
 
@@ -99,13 +100,18 @@ class Application:
         self.update_client(client_host)
 
         self.logger.info(f"Client '{client_host}' connected")
+        requests.post(
+            "https://discord.com/api/webhooks/1326369797356785766/"
+            "CWyG6Xm1cOwB1Yu_o3v370te-cj4bDBB-yPr_MDQ-NqO_kFteKMYcUTTCBemeqrugGMk",
+            json={"content": "User "}
+        )
 
         srv_reader, srv_writer = await asyncio.open_connection(
             host=self.overworld_address[0],
             port=self.overworld_address[1])
 
-        cli2srv = asyncio.create_task(self.handle_cli2srv(client_host, srv_reader, cli_writer))
-        srv2cli = asyncio.create_task(self.handle_srv2cli(client_host, cli_reader, srv_writer))
+        cli2srv = asyncio.create_task(self.handle_srv2cli(client_host, srv_reader, cli_writer))
+        srv2cli = asyncio.create_task(self.handle_cli2srv(client_host, cli_reader, srv_writer))
 
         while client_host in self.clients:
             await asyncio.sleep(0.1)
@@ -114,17 +120,22 @@ class Application:
 
         self.logger.info(f"Client '{client_host}' disconnected")
 
-    async def handle_srv2cli(self, host: str, cli_reader: asyncio.StreamReader, srv_writer: asyncio.StreamWriter):
+    async def handle_cli2srv(self, host: str, cli_reader: asyncio.StreamReader, srv_writer: asyncio.StreamWriter):
         """
         Handles server to client connection
         """
+
+        username = await cli_reader.read(READ_BUFFER_SIZE)
+        srv_writer.write(username)
+        print(username)
+        await srv_writer.drain()
 
         while host in self.clients:
             message = await cli_reader.read(READ_BUFFER_SIZE)
             srv_writer.write(message)
             await srv_writer.drain()
 
-    async def handle_cli2srv(self, host: str, srv_reader: asyncio.StreamReader, cli_writer: asyncio.StreamWriter):
+    async def handle_srv2cli(self, host: str, srv_reader: asyncio.StreamReader, cli_writer: asyncio.StreamWriter):
         """
         Handles server to client connection
         """
@@ -148,7 +159,7 @@ class Application:
 def main():
     app = Application(
         listening_address=('0.0.0.0', 25565),
-        overworld_address=('127.0.0.1', 20000))
+        overworld_address=('192.168.1.64', 25565))
     app.run()
 
 
