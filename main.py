@@ -34,13 +34,15 @@ class Application:
             self,
             listening_address: tuple[str, int],
             overworld_address: tuple[str, int],
-            hellworld_address: tuple[str, int],
+            hellworld_address: tuple[str, int] | None = None,
     ):
         self.listening_address: tuple[str, int] = listening_address
         self.overworld_address: tuple[str, int] = overworld_address
-        self.hellworld_address: tuple[str, int] = hellworld_address
+        self.hellworld_address: tuple[str, int] | None = hellworld_address
 
         self.server: asyncio.Server | None = None
+
+        self.clients: dict[str, dict] = dict()
 
         self.logger: logging.Logger = logging.getLogger(__name__)
 
@@ -67,24 +69,68 @@ class Application:
 
         asyncio.run(coro())
 
+    def update_client(self, host: str, **kwargs):
+        """
+        Updates client info
+        :param host: client address
+        :param kwargs: fields to update
+        """
+
+        if host not in self.clients:
+            self.clients[host] = dict()
+
+        self.clients[host].update(kwargs)
+
+    def delete_client(self, host: str):
+        """
+        Deletes client from client list
+        :param host: client address
+        """
+
+        if host in self.clients:
+            self.clients.pop(host)
+
     async def client_handler(self, cli_reader: asyncio.StreamReader, cli_writer: asyncio.StreamWriter):
         """
         Handles the client connection
         """
 
+        client_host = cli_writer.get_extra_info("peername").__str__()
+        self.update_client(client_host)
+
+        self.logger.info(f"Client '{client_host}' connected")
+
         srv_reader, srv_writer = await asyncio.open_connection(
             host=self.overworld_address[0],
             port=self.overworld_address[1])
 
-        while not cli_writer.is_closing():
-            # receive client message
-            cli_msg = await cli_reader.read(READ_BUFFER_SIZE)
-            srv_writer.write(cli_msg)
+        await asyncio.gather(
+            self.handle_cli2srv(client_host, srv_reader, cli_writer),
+            self.handle_srv2cli(client_host, cli_reader, srv_writer))
+
+        self.logger.info(f"Client '{client_host}' disconnected")
+
+    async def handle_srv2cli(self, host: str, cli_reader: asyncio.StreamReader, srv_writer: asyncio.StreamWriter):
+        """
+        Handles server to client connection
+        """
+
+        while host in self.clients:
+            message = await cli_reader.read(READ_BUFFER_SIZE)
+            srv_writer.write(message)
             await srv_writer.drain()
 
-            # receive server message
-            srv_msg = await srv_reader.read(READ_BUFFER_SIZE)
-            cli_writer.write(srv_msg)
+    async def handle_cli2srv(self, host: str, srv_reader: asyncio.StreamReader, cli_writer: asyncio.StreamWriter):
+        """
+        Handles server to client connection
+        """
+
+        while host in self.clients:
+            message = await srv_reader.read(READ_BUFFER_SIZE)
+            if message == b'':
+                self.delete_client(host)
+
+            cli_writer.write(message)
             await cli_writer.drain()
 
     def stop(self, *args):
@@ -97,8 +143,8 @@ class Application:
 
 def main():
     app = Application(
-        listening_port=25565,
-        server_overworld_port=20000)
+        listening_address=('0.0.0.0', 25565),
+        overworld_address=('127.0.0.1', 20000))
     app.run()
 
 
