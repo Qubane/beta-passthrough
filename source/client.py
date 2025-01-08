@@ -94,10 +94,12 @@ class Client:
         match message[:2]:
             case b'\x03\x00':  # chat messages
                 if message[3:4] == b'/':
-                    return message[:2] + self.process_command(message[4:])
+                    response = message[:2] + self.process_command(message[4:message[2]+3]) + message[message[2]+3:]
+                else:
+                    response = message
             case _:
-                pass
-        return message
+                response = message
+        return response
 
     def server_message_monitor(self, message) -> bytes:
         """
@@ -118,16 +120,7 @@ class Client:
         :return: response
         """
 
-        # don't ask why, I can't answer
-        delimiter = b''
-        if command[-1] == ord(b'\x01'):
-            delimiter = b'\n\x01'
-            command = command[:-2]
-        elif command[-1] == ord(b'\n'):
-            delimiter = b'\n'
-            command = command[:-1]
-
         if command == b'list':
             msg = b'Online: ' + b'; '.join(client.username.encode("ascii") for client in self.clients.values())
-            return len(msg).to_bytes(1) + msg + delimiter
-        return command + delimiter
+            return len(msg).to_bytes(1) + msg
+        return command
