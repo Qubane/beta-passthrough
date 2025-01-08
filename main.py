@@ -22,7 +22,7 @@ def init_logging():
         format="[{asctime}] [{levelname:<8}] {name}: {message}",
         handlers=[
             logging.handlers.RotatingFileHandler(
-                filename=f"{LOGS_DIRECTORY}/discord.log",
+                filename=f"{LOGS_DIRECTORY}/proxy.log",
                 encoding="utf-8",
                 maxBytes=2 ** 20 * 32,  # 32 MiB
                 backupCount=5),
@@ -72,7 +72,20 @@ class Application:
         Handles the client connection
         """
 
-        srv_reader, srv_writer = await asyncio.open_connection("127.0.0.1")
+        srv_reader, srv_writer = await asyncio.open_connection(
+            host=self.overworld_address[0],
+            port=self.overworld_address[1])
+
+        while not cli_writer.is_closing():
+            # receive client message
+            cli_msg = await cli_reader.read(READ_BUFFER_SIZE)
+            srv_writer.write(cli_msg)
+            await srv_writer.drain()
+
+            # receive server message
+            srv_msg = await srv_reader.read(READ_BUFFER_SIZE)
+            cli_writer.write(srv_msg)
+            await cli_writer.drain()
 
     def stop(self, *args):
         """
