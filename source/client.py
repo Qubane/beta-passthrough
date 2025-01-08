@@ -4,7 +4,7 @@ from source.settings import READ_BUFFER_SIZE
 
 
 class Client:
-    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, **kwargs):
         self.reader: asyncio.StreamReader = reader
         self.writer: asyncio.StreamWriter = writer
 
@@ -15,6 +15,8 @@ class Client:
 
         self.username: str = "undefined"
         self.connected: bool = False
+
+        self.clients: dict[str, Client] = kwargs.get("clients", dict())
 
     async def initial_connection(self, srv_reader: asyncio.StreamReader, srv_writer: asyncio.StreamWriter):
         """
@@ -91,7 +93,8 @@ class Client:
 
         match message[:2]:
             case b'\x03\x00':  # chat messages
-                pass
+                if message[3:4] == b'/':
+                    return message[:2] + self.process_command(message[4:])
             case _:
                 pass
         return message
@@ -107,3 +110,24 @@ class Client:
             case _:
                 pass
         return message
+
+    def process_command(self, command: bytes) -> bytes:
+        """
+        Processes the command
+        :param command: chat / command
+        :return: response
+        """
+
+        # don't ask why, I can't answer
+        delimiter = b''
+        if command[-1] == ord(b'\x01'):
+            delimiter = b'\n\x01'
+            command = command[:-2]
+        elif command[-1] == ord(b'\n'):
+            delimiter = b'\n'
+            command = command[:-1]
+
+        if command == b'list':
+            msg = b'Online: ' + b'; '.join(client.username.encode("ascii") for client in self.clients.values())
+            return len(msg).to_bytes(1) + msg + delimiter
+        return command + delimiter
