@@ -3,7 +3,7 @@ import logging
 import logging.handlers
 
 
-READ_BUFFER_SIZE: int = 16
+READ_BUFFER_SIZE: int = 2 ** 14
 LOGS_DIRECTORY: str = "logs"
 
 
