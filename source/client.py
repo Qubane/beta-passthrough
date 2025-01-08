@@ -30,17 +30,35 @@ class Client:
         await self.server_writer.drain()
 
         # server accept connection response
-        # 02 00 01 2d
+        # 02 00 01 2D
         message = await self.server_reader.read(READ_BUFFER_SIZE)
         self.writer.write(message)
         await self.writer.drain()
+
+    async def start_communication(self):
+        """
+        Starts communication between client and server
+        """
+
+        if self.server_reader is None:
+            raise Exception("Not connected")
 
     async def cli2srv(self):
         """
         Client to server communication
         """
 
+        while self.connected:
+            message = await self.reader.read(READ_BUFFER_SIZE)
+            self.server_writer.write(message)
+            await self.server_writer.drain()
+
     async def srv2cli(self):
         """
         Server to client communication
         """
+
+        while self.connected:
+            message = await self.server_reader.read(READ_BUFFER_SIZE)
+            self.writer.write(message)
+            await self.writer.drain()
