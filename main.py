@@ -5,7 +5,8 @@ import logging
 import logging.handlers
 
 
-LOGS_DIRECTORY = "logs"
+READ_BUFFER_SIZE: int = 2 ** 12
+LOGS_DIRECTORY: str = "logs"
 
 
 def init_logging():
