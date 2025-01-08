@@ -185,7 +185,7 @@ class Application:
         """
 
         # chat messages
-        # b'\x03\x00' + [msg_length;1byte]
+        # b'\x03\x00' + [msg_length + 1;1byte] + b'\n'
         if (idx := message.find(b'\x03\x00')) > -1:
             self.handle_chat_messages(message[idx+3:message.find(b'\n', idx)].decode("ascii"))
 
